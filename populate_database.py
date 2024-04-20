@@ -1,8 +1,7 @@
 import argparse
 import os
 import shutil
-from langchain.document_loaders.pdf import PyPDFDirectoryLoader
-from langchain_community.document_loaders import DirectoryLoader, UnstructuredMarkdownLoader, UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import DirectoryLoader, UnstructuredMarkdownLoader, UnstructuredWordDocumentLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from get_embedding_function import get_embedding_function
@@ -37,7 +36,7 @@ def load_documents():
     document_loader = DirectoryLoader(DATA_PATH, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader)    
     documents.extend(document_loader.load())
 
-    document_loader = DirectoryLoader(DATA_PATH, glob="**/*.pdf", loader_cls=PyPDFDirectoryLoader)    
+    document_loader = DirectoryLoader(DATA_PATH, glob="**/*.pdf", loader_cls=PyPDFLoader)    
     documents.extend(document_loader.load())
 
     document_loader = DirectoryLoader(DATA_PATH, glob="**/*.docx", loader_cls=UnstructuredWordDocumentLoader)    
