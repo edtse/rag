@@ -2,3 +2,6 @@ pypdf
 langchain
 chromadb # Vector storage
 pytest
+unstructured
+markdown
+python-docx

@@ -2,10 +2,12 @@ import argparse
 import os
 import shutil
 from langchain.document_loaders.pdf import PyPDFDirectoryLoader
+from langchain_community.document_loaders import DirectoryLoader, UnstructuredMarkdownLoader, UnstructuredWordDocumentLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from get_embedding_function import get_embedding_function
 from langchain.vectorstores.chroma import Chroma
+import hashlib
 
 
 CHROMA_PATH = "chroma"
@@ -29,8 +31,56 @@ def main():
 
 
 def load_documents():
-    document_loader = PyPDFDirectoryLoader(DATA_PATH)
-    return document_loader.load()
+    
+    documents = []
+    
+    document_loader = DirectoryLoader(DATA_PATH, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader)    
+    documents.extend(document_loader.load())
+
+    document_loader = DirectoryLoader(DATA_PATH, glob="**/*.pdf", loader_cls=PyPDFDirectoryLoader)    
+    documents.extend(document_loader.load())
+
+    document_loader = DirectoryLoader(DATA_PATH, glob="**/*.docx", loader_cls=UnstructuredWordDocumentLoader)    
+    documents.extend(document_loader.load())
+
+    # Walk through directory recursively
+    # for root, dirs, files in os.walk(DATA_PATH):
+    #     # Filter and load PDF documents
+    #     pdf_files = [file for file in files if file.endswith('.pdf')]
+    #     for pdf_dir in dirs:
+    #         full_path = os.path.join(root, pdf_dir)
+    #         document_loader = PyPDFDirectoryLoader(full_path)
+    #         documents.extend(document_loader.load())
+
+        # # Filter and load Markdown documents
+        # md_files = [file for file in files if file.endswith('.md') or file.endswith('.MD')]
+        # for md_file in md_files:
+        #     full_path = os.path.join(root, md_file)
+        #     document_loader = UnstructuredMarkdownLoader(full_path)
+        #     documents.extend(document_loader.load())
+
+        # Filter and load Markdown documents
+        # word_files = [file for file in files if file.endswith('.doc') or file.endswith('.docx')]
+        # for word_file in word_files:
+        #     full_path = os.path.join(root, md_file)
+        #     document_loader = AzureAIDocumentIntelligenceLoader(full_path)
+        #     documents.extend(document_loader.load())
+
+    return documents
+
+def calculate_sha1(filepath):
+    sha1 = hashlib.sha1()
+    try:
+        with open(filepath, 'rb') as f:
+            while True:
+                data = f.read(65536)  # Read in chunks of 64KB
+                if not data:
+                    break
+                sha1.update(data)
+    except FileNotFoundError:
+        print("File not found")
+        return None
+    return sha1.hexdigest()
 
 
 def split_documents(documents: list[Document]):
@@ -63,6 +113,15 @@ def add_to_chroma(chunks: list[Document]):
         if chunk.metadata["id"] not in existing_ids:
             new_chunks.append(chunk)
 
+    # Collect IDs from the current chunks.
+    current_ids = {chunk.metadata["id"] for chunk in chunks_with_ids}
+    # Find and delete documents no longer present in the new set.
+    obsolete_ids = existing_ids - current_ids
+    if obsolete_ids:
+        print(f"👉 Deleted documents: {len(obsolete_ids)}")
+        db.delete(ids=list(obsolete_ids))
+        db.persist()
+        
     if len(new_chunks):
         print(f"👉 Adding new documents: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
@@ -83,7 +142,8 @@ def calculate_chunk_ids(chunks):
     for chunk in chunks:
         source = chunk.metadata.get("source")
         page = chunk.metadata.get("page")
-        current_page_id = f"{source}:{page}"
+        sha1_hash = calculate_sha1(source)  # Calculate if not provided
+        current_page_id = f"{source}:{page}:{sha1_hash}"        
 
         # If the page ID is the same as the last one, increment the index.
         if current_page_id == last_page_id:

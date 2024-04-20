@@ -9,18 +9,24 @@ Actual Response: {actual_response}
 """
 
 
-def test_monopoly_rules():
+# def test_monopoly_rules():
+#     assert query_and_validate(
+#         question="How much total money does a player start with in Monopoly? (Answer with the number only)",
+#         expected_response="$1500",
+#     )
+
+def test_uno_rules():
     assert query_and_validate(
-        question="How much total money does a player start with in Monopoly? (Answer with the number only)",
-        expected_response="$1500",
+        question="How many blue cards are there in uno? Give me numbers only",
+        expected_response="19",
     )
 
 
-def test_ticket_to_ride_rules():
-    assert query_and_validate(
-        question="How many points does the longest continuous train get in Ticket to Ride? (Answer with the number only)",
-        expected_response="10 points",
-    )
+# def test_ticket_to_ride_rules():
+#     assert query_and_validate(
+#         question="How many points does the longest continuous train get in Ticket to Ride? (Answer with the number only)",
+#         expected_response="10 points",
+#     )
 
 
 def query_and_validate(question: str, expected_response: str):
@@ -29,7 +35,7 @@ def query_and_validate(question: str, expected_response: str):
         expected_response=expected_response, actual_response=response_text
     )
 
-    model = Ollama(model="mistral")
+    model = Ollama(model="llama3")
     evaluation_results_str = model.invoke(prompt)
     evaluation_results_str_cleaned = evaluation_results_str.strip().lower()
 
